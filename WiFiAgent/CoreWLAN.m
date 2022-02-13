@@ -1,9 +1,25 @@
+// clang -fmodules -I /V*/F*/M*/U* -dynamiclib -o '/Library/Application Support/SkyLightPlugins/CW.dylib' CoreWLAN.m && echo '/System/Library/CoreServices/WiFiAgent.app/Contents/MacOS/WiFiAgent' > '/Library/Application Support/SkyLightPlugins/CW.txt' && codesign -f -s - '/Library/Application Support/SkyLightPlugins/CW.dylib' && killall -9 WiFiAgent && log stream --predicate 'message contains "ASB:"'
+
+// workaround downgraded WiFiAgent crash
+// credit: Edu & ASB
+
 #import "Utils.h"
+
+void add(Class class,NSString* selString,IMP imp,char* types)
+{
+	trace(@"cw: class_addMethod %@ %d",selString,class_addMethod(class,NSSelectorFromString(selString),imp,types));
+}
 
 id fake_UAWSJUFWN(id self,SEL sel,id rdx,id rcx,double xmm0,id (^r8)(id))
 {
 	trace(@"cw: fake_UAWSJUFWN");
 	r8(nil);
+	return nil;
+}
+
+id fake_DWLAR(id self,SEL sel,id rdx)
+{
+	trace(@"cw: fake_DWLAR");
 	return nil;
 }
 
@@ -14,26 +30,19 @@ id fake_ROPWEH(id self,SEL sel,id rdx)
 	
 	if([NSStringFromClass(result.class) isEqualToString:@"__NSXPCInterfaceProxy_CWWiFiXPCRequestProtocol"])
 	{
-		trace(@"cw: fake_ROPWEH class_addMethod %d",class_addMethod(result.class,@selector(internal_userAgentWillShowJoinUIForWiFiNetwork:interfaceName:timestamp:reply:),(IMP)fake_UAWSJUFWN,"@@:@@@@"));
+		trace(@"cw: fake_ROPWEH matched class");
+		
+		add(result.class,@"internal_userAgentWillShowJoinUIForWiFiNetwork:interfaceName:timestamp:reply:",(IMP)fake_UAWSJUFWN,"@@:@@@@");
+		add(result.class,@"internal_dumpWiFiLogsAndReply:",(IMP)fake_DWLAR,"@@:@");
 	}
 	
 	return result;
 }
 
-@interface Load:NSObject
-@end
-
-@implementation Load
-
-+(void)load
+void SkyLightPluginEntry()
 {
-	if([NSProcessInfo.processInfo.processName isEqualToString:@"WiFiAgent"])
-	{
-		traceLog=true;
-		trace(@"cw: WiFiAgent");
-		
-		swizzleImp(@"NSXPCConnection",@"remoteObjectProxyWithErrorHandler:",true,(IMP)fake_ROPWEH,(IMP*)&real_ROPWEH);
-	}
+	traceLog=true;
+	trace(@"cw: hi");
+	
+	swizzleImp(@"NSXPCConnection",@"remoteObjectProxyWithErrorHandler:",true,(IMP)fake_ROPWEH,(IMP*)&real_ROPWEH);
 }
-
-@end
