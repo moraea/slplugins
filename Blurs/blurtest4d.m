@@ -193,7 +193,8 @@ void load()
 	
 	[NSNotificationCenter.defaultCenter addObserverForName:NSWindowWillMiniaturizeNotification object:nil queue:nil usingBlock:^(NSNotification* note)
 	{
-		NSApp.keyWindow.resignKeyWindow;
-		NSApp.mainWindow.resignMainWindow;
+		NSWindow* window=note.object;
+		window.resignKeyWindow;
+		window.resignMainWindow;
 	}];
 }
