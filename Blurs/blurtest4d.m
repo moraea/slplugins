@@ -175,7 +175,7 @@ void fake_updateLayer(NSVisualEffectView* self,SEL sel)
 		
 		CGRect bounds=self.frame;
 		bounds.origin=CGPointZero;
-		proxy.bounds=bounds;
+		proxy.frame=bounds;
 	}
 	else
 	{
