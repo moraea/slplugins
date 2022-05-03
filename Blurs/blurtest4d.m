@@ -1,5 +1,5 @@
 // osascript -e 'tell app "Finder" to quit'
-// clang -fmodules -dynamiclib -I ../../non-metal-common/Utils blurtest4d.m -F /System/Library/PrivateFrameworks -framework SkyLight -o /tmp/b.dylib && codesign -f -s - /tmp/b.dylib && DYLD_INSERT_LIBRARIES=/tmp/b.dylib /S*/L*/C*/F*/C*/M*/Finder
+// clang -fmodules -dynamiclib -I ../../non-metal-common/Utils blurtest4d.m -F /System/Library/PrivateFrameworks -framework SkyLight -o /tmp/b.dylib -Wno-unused-getter-return-value && codesign -f -s - /tmp/b.dylib && DYLD_INSERT_LIBRARIES=/tmp/b.dylib /S*/L*/C*/F*/C*/M*/Finder
 
 #import "Utils.h"
 @import AppKit;
@@ -16,6 +16,7 @@ extern id kCAFilterCopy;
 @end
 
 @interface CAFilter:NSObject
++(instancetype)filterWithType:(id)rdx;
 @end
 
 Class dynamic__NSViewBackingLayer;
@@ -44,12 +45,13 @@ NSString* materialForView(NSVisualEffectView* view)
 		return nil;
 	}
 	
-	// material-based mapping
+	// material-based logic
+	// TODO: these all need to be re-checked and documented what they are
 	
 	BOOL dark=SLSGetAppearanceThemeLegacy();
 	switch(view.material)
 	{
-		// blacklist
+		// blacklist - uses stock
 		
 		case 30:
 		case 12:
@@ -59,6 +61,8 @@ NSString* materialForView(NSVisualEffectView* view)
 		case NSVisualEffectMaterialSelection:
 		case 36:
 			return nil;
+		
+		// mapping - uses SL materials
 		
 		case NSVisualEffectMaterialMenu:
 		case NSVisualEffectMaterialPopover:
@@ -88,6 +92,9 @@ void fake_updateLayer(NSVisualEffectView* self,SEL sel)
 {
 	real_updateLayer(self,sel);
 	
+	// first, see if we already added a proxy layer
+	// otherwise, put a new one below any AppKit layers that are already here
+	
 	CAProxyLayer* proxy=nil;
 	int firstAK=self.layer.sublayers.count-1;
 	for(int i=0;i<self.layer.sublayers.count;i++)
@@ -98,13 +105,14 @@ void fake_updateLayer(NSVisualEffectView* self,SEL sel)
 		
 		if([layer isKindOfClass:CAProxyLayer.class])
 		{
-			proxy=layer;
+			proxy=(CAProxyLayer*)layer;
 			break;
 		}
 		
 		if([layer isKindOfClass:dynamic__NSViewBackingLayer])
 		{
-			firstAK=MIN(i,firstAK);
+			firstAK=i;
+			break;
 		}
 	}
 	
@@ -141,8 +149,8 @@ void fake_updateLayer(NSVisualEffectView* self,SEL sel)
 __attribute__((constructor))
 void load()
 {
-	//traceLog=true;
-	swizzleImp(@"NSVisualEffectView",@"updateLayer",true,(IMP)fake_updateLayer,&real_updateLayer);
+	// traceLog=true;
+	swizzleImp(@"NSVisualEffectView",@"updateLayer",true,(IMP)fake_updateLayer,(IMP*)&real_updateLayer);
 	
 	dynamic__NSViewBackingLayer=NSClassFromString(@"_NSViewBackingLayer");
 }
