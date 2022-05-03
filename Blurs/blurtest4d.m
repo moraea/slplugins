@@ -190,4 +190,10 @@ void load()
 	swizzleImp(@"NSVisualEffectView",@"updateLayer",true,(IMP)fake_updateLayer,(IMP*)&real_updateLayer);
 	
 	dynamic__NSViewBackingLayer=NSClassFromString(@"_NSViewBackingLayer");
+	
+	[NSNotificationCenter.defaultCenter addObserverForName:NSWindowWillMiniaturizeNotification object:nil queue:nil usingBlock:^(NSNotification* note)
+	{
+		NSApp.keyWindow.resignKeyWindow;
+		NSApp.mainWindow.resignMainWindow;
+	}];
 }
